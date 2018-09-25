@@ -5,6 +5,9 @@ defmodule TelegramModule do
     reg = Keyword.get(opts, :reg)
     quote do
       @behaviour Behaviours.Telegram
+
+      require Logger
+
       def start_link(accountId) do
         name = via_tuple(accountId)
         GenServer.start_link(__MODULE__, [accountId], name: name)
@@ -15,6 +18,7 @@ defmodule TelegramModule do
       end
 
       def sendInfo(accountId, info) do
+        Logger.info(inspect([accountId, info]))
         GenServer.cast(via_tuple(accountId), info)
         info
       end

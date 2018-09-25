@@ -1,5 +1,6 @@
 defmodule Handlers.Weather do
   @moduledoc false
+
   use GenServer
   use TelegramModule, reg: :process_registry
 
@@ -8,6 +9,7 @@ defmodule Handlers.Weather do
   alias Helpers.Yandex
   alias Helpers.Analitic
 
+  @spec init(any()) :: {:ok, %{}}
   def init(_opts) do
     {:ok, %{}}
   end
@@ -29,9 +31,7 @@ defmodule Handlers.Weather do
         },
         state
       ) do
-
     getWeather({lot, lat}, chatId)
-    Analitic.sendData("get", chatId, "weather")
 
     {:noreply, state}
   end
@@ -39,6 +39,8 @@ defmodule Handlers.Weather do
   def handle_cast(
         %TlgmMessage{
           is_cmd: false,
+          action: nil,
+          data: nil,
           msg: %Nadia.Model.Message{
             text: addr,
             chat: %{
@@ -48,19 +50,38 @@ defmodule Handlers.Weather do
         },
         state
       ) do
-
     getWeather(addr, chatId)
 
     {:noreply, state}
   end
 
+  def handle_cast(
+        %TlgmMessage{
+          msg: %Nadia.Model.Message{
+            chat: %{
+              id: chatId
+            }
+          }
+        },
+        state
+      ) do
+    Message.sendUnknowAction(chatId)
+
+    {:noreply, state}
+  end
+
   defp getWeather(addr, chatId) do
+    Analitic.sendData("get", chatId, "weather")
+
     case Yandex.getWeather(addr, chatId) do
-      {:ok, false} -> nil
+      {:ok, false} ->
+        nil
+
       {:ok, weather} ->
-        Analitic.sendData("get", chatId, "weather")
         Message.showWeather(weather, chatId)
-      _ -> nil
+
+      _ ->
+        nil
     end
   end
 end

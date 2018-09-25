@@ -13,7 +13,8 @@ defmodule Helpers.Tools do
   @spec isBehaviours?(atom() | %{module_info: nil | keyword() | map()}, any()) :: boolean()
   def isBehaviours?(module, behaviour) do
     module.module_info[:attributes]
-    |> Keyword.get(:behaviour, [])
+    |> Keyword.get_values(:behaviour)
+    |> List.flatten
     |> Enum.member?(behaviour)
   end
 end

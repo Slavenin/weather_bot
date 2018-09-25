@@ -1,6 +1,8 @@
 defmodule Helpers.Message do
   @moduledoc false
 
+  @spec showWeather(map(), integer()) ::
+          {:error, Nadia.Model.Error.t()} | {:ok, Nadia.Model.Message.t()}
   def showWeather(
         %{
           "fact" => %{
@@ -12,51 +14,64 @@ defmodule Helpers.Message do
         },
         chId
       ) do
-
-
     Nadia.send_message(
       chId,
       "За окном *#{getCondition(condition)}*, температура *#{temp} °C*, направление ветра *#{
         getWind(wind_dir)
-      }* со скоростью *#{
-        wind_speed
-      }* м/с",
+      }* со скоростью *#{wind_speed}* м/с",
       parse_mode: :Markdown
     )
   end
 
-  def sendHellow(name, chId) do
+  @spec sendHello(String.t(), integer()) ::
+          {:error, Nadia.Model.Error.t()} | {:ok, Nadia.Model.Message.t()}
+  def sendHello(name, chId) do
     Nadia.send_message(
       chId,
       "Привет, #{name}! Пришли мне адрес, а я скажу погоду там.",
       reply_markup: %{
-        keyboard: [[
-          %{
-            text: "Отправить местоположение",
-            request_location: true
-          }
-        ]]
+        keyboard: [
+          [
+            %{
+              text: "Отправить местоположение",
+              request_location: true
+            }
+          ]
+        ]
       }
     )
   end
 
+  @spec sendError(integer()) :: {:error, Nadia.Model.Error.t()} | {:ok, Nadia.Model.Message.t()}
   def sendError(chId) do
     Nadia.send_message(chId, "К сожалению, произшла ошибка. Попробуйте позже.")
   end
 
+  @spec sendNotFound(integer()) ::
+          {:error, Nadia.Model.Error.t()} | {:ok, Nadia.Model.Message.t()}
   def sendNotFound(chId) do
     Nadia.send_message(chId, "К сожалению, по вашему запросу ничего не найдено. Попробуйте ещё.")
   end
 
+  @spec sendResult(binary(), integer(), String.t()) ::
+          {:error, Nadia.Model.Error.t()} | {:ok, Nadia.Model.Message.t()}
   def sendResult(weather, chId, city) do
     Nadia.send_message(chId, "Погода в городе #{city}:")
     Nadia.send_message(chId, "```\n#{escapeMarkdown(weather)}```", parse_mode: :Markdown)
   end
 
+  @spec sendReauth(integer()) :: {:error, Nadia.Model.Error.t()} | {:ok, Nadia.Model.Message.t()}
   def sendReauth(chId) do
     Nadia.send_message(chId, "Что-то пошло не так... Нажмите /start")
   end
 
+  @spec sendUnknowAction(integer()) ::
+          {:error, Nadia.Model.Error.t()} | {:ok, Nadia.Model.Message.t()}
+  def sendUnknowAction(chId) do
+    Nadia.send_message(chId, "Упс, вы хотите чего-то странного")
+  end
+
+  @spec escapeMarkdown(binary()) :: binary()
   def escapeMarkdown(text) do
     Regex.replace(~r/`$/iu, text, "``")
   end
@@ -89,5 +104,4 @@ defmodule Helpers.Message do
   defp getWind("sw"), do: "юго-западное"
   defp getWind("w"), do: "западное"
   defp getWind("c"), do: "штиль"
-
 end

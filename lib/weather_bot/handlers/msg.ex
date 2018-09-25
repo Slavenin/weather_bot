@@ -24,6 +24,7 @@ defmodule Handlers.Msg do
               msg_buffer: [],
               timer: nil
   end
+
   @doc """
   Инициализация модуля
   """
@@ -43,7 +44,10 @@ defmodule Handlers.Msg do
   @doc """
   Асинхронный обработчик сообщений модуля
   """
-  @spec handle_cast(Nadia.Model.Message.t() | Nadia.Model.CallbackQuery.t() | :change_handler, Handlers.Msg.State.t()) :: {:noreply, Handlers.Msg.State.t()}
+  @spec handle_cast(
+          Nadia.Model.Message.t() | Nadia.Model.CallbackQuery.t() | :change_handler,
+          Handlers.Msg.State.t()
+        ) :: {:noreply, Handlers.Msg.State.t()}
   def handle_cast(
         %Nadia.Model.Message{text: text} = msg,
         %State{tUserId: accountId, lastCall: tMsg} = state
@@ -67,14 +71,27 @@ defmodule Handlers.Msg do
         },
         %State{lastCall: tMsg} = state
       ) do
-    ntMsg = %TlgmMessage{tMsg | module: module, is_cmd: isCmd, action: action, data: data, call_id: id}
+    ntMsg = %TlgmMessage{
+      tMsg
+      | module: module,
+        is_cmd: isCmd,
+        action: action,
+        data: data,
+        call_id: id
+    }
+
     {:noreply, %State{state | lastCall: ntMsg}}
   end
 
   @doc """
   Обработка входящих сообщений
   """
-  @spec handleMessage(nil | binary(), Nadia.Model.Message.t() | Nadia.Model.CallbackQuery.t(), integer(), Model.TlgmMessage.t()) :: Model.TlgmMessage.t()
+  @spec handleMessage(
+          nil | binary(),
+          Nadia.Model.Message.t() | Nadia.Model.CallbackQuery.t(),
+          integer(),
+          Model.TlgmMessage.t()
+        ) :: Model.TlgmMessage.t()
   def handleMessage(nil, msg, _accountId, tMsg) do
     sendMessage(msg, tMsg)
   end
@@ -88,23 +105,44 @@ defmodule Handlers.Msg do
     end
   end
 
-
-  #Проверяет является ли входящее сообщение командой
+  # Проверяет является ли входящее сообщение командой
   @spec isCommand?(binary()) :: boolean
   defp isCommand?(text), do: Regex.match?(~r/^\/.+/, text)
 
-  #Разбирает команду на составляющие
-  @spec analizeCommand(binary(), Nadia.Model.Message.t() | Nadia.Model.CallbackQuery.t()) :: {binary(), nil | binary(), nil | binary(), Model.TlgmMessage.t()}
+  # Разбирает команду на составляющие
+  defp analizeCommand(:split, [cmd], msg) do
+    {cmd, nil, nil, msg}
+  end
+
+  defp analizeCommand(:split, [cmd, action], msg) do
+    {cmd, action, nil, msg}
+  end
+
+  defp analizeCommand(:split, [cmd, action, data], msg) do
+    {cmd, action, data, msg}
+  end
+
+  defp analizeCommand(:split, text, msg) do
+    {_, data} = Enum.split(text, 2)
+    {Enum.at(text, 0), Enum.at(text, 1), Enum.join(data, " "), msg}
+  end
+
+  @spec analizeCommand(binary() | list(), Nadia.Model.Message.t() | Nadia.Model.CallbackQuery.t()) ::
+          {binary(), nil | binary(), nil | binary(),
+           Nadia.Model.Message.t() | Nadia.Model.CallbackQuery.t()}
   defp analizeCommand(text, msg) do
-    case String.split(text, "|") do
-      [cmd] -> {cmd, nil, nil, msg}
-      [cmd, action] -> {cmd, action, nil, msg}
-      [cmd, action, data] -> {cmd, action, data, msg}
+    case analizeCommand(:split, String.split(text, "|"), msg) do
+      {_cmd, nil, nil, msg} -> analizeCommand(:split, String.split(text, " "), msg)
+      result -> result
     end
   end
 
-  #Вызывает модуль обработчик для заданной команды
-  @spec callCommand({binary(), nil | binary(), nil | binary(), Model.TlgmMessage.t()}, integer()) :: nil |  Model.TlgmMessage.t()
+  # Вызывает модуль обработчик для заданной команды
+  @spec callCommand(
+          {binary(), nil | binary(), nil | binary(),
+           Nadia.Model.Message.t() | Nadia.Model.CallbackQuery.t()},
+          integer()
+        ) :: nil | Model.TlgmMessage.t()
   defp callCommand({"/" <> cmd, action, data, msg}, accountId) do
     sModule = Helpers.Tools.capitalize(cmd)
     module = String.to_existing_atom("Elixir.Handlers.#{sModule}")
@@ -129,14 +167,18 @@ defmodule Handlers.Msg do
     end
   end
 
-  #Проверяет реализацию поведения Telegram
+  # Проверяет реализацию поведения Telegram
   @spec isTlgmModule?(atom()) :: boolean()
   defp isTlgmModule?(module) do
     Tools.isBehaviours?(module, Behaviours.Telegram)
   end
 
-  #Отправка сообщения заданному модулю
-  @spec sendMessage(Nadia.Model.Message.t() | Nadia.Model.CallbackQuery.t(), Model.TlgmMessage.t() | any()) :: Model.TlgmMessage.t() | {:ok, Nadia.Model.Message.t()} | {:error, Nadia.Model.Error.t()}
+  # Отправка сообщения заданному модулю
+  @spec sendMessage(
+          Nadia.Model.Message.t() | Nadia.Model.CallbackQuery.t(),
+          Model.TlgmMessage.t() | any()
+        ) ::
+          Model.TlgmMessage.t() | {:ok, Nadia.Model.Message.t()} | {:error, Nadia.Model.Error.t()}
   defp sendMessage(msg, %TlgmMessage{module: module, call_id: id} = tMsg) do
     ntMsg = %TlgmMessage{tMsg | is_cmd: false, msg: msg}
     module.sendInfo(id, ntMsg)

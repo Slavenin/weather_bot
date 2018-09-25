@@ -31,7 +31,7 @@ defmodule Handlers.Start do
     Analitic.sendData("add_bot", chId, "add")
 
     getName(fName, lName, uName)
-    |> Message.sendHellow(chId);
+    |> Message.sendHello(chId);
 
     {:noreply, state}
   end
